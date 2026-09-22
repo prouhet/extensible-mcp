@@ -120,9 +120,13 @@ class _Connection:
                 http_client = self._make_http_client()
                 if http_client:
                     await stack.enter_async_context(http_client)
-                read, write, _ = await stack.enter_async_context(
+                # mcp>=2.0 yields (read, write); mcp<2.0 yields
+                # (read, write, get_session_id). Slice instead of assuming a
+                # fixed tuple length so this works across both major versions.
+                transport = await stack.enter_async_context(
                     streamable_http_client(self.config.url, http_client=http_client)
                 )
+                read, write = transport[0], transport[1]
             else:
                 params = StdioServerParameters(
                     command=self.config.command,
@@ -145,9 +149,12 @@ class _Connection:
             http_client = self._make_http_client()
             if http_client:
                 await stack.enter_async_context(http_client)
-            read, write, _ = await stack.enter_async_context(
+            # See the matching comment in connect() above: tolerate both the
+            # 2-tuple (mcp>=2.0) and 3-tuple (mcp<2.0) shapes.
+            transport = await stack.enter_async_context(
                 streamable_http_client(self.config.url, http_client=http_client)
             )
+            read, write = transport[0], transport[1]
             session = await stack.enter_async_context(ClientSession(read, write))
             await session.initialize()
             result = await session.list_tools()
@@ -162,9 +169,12 @@ class _Connection:
                 http_client = self._make_http_client()
                 if http_client:
                     await stack.enter_async_context(http_client)
-                read, write, _ = await stack.enter_async_context(
+                # See the matching comment in connect() above: tolerate both
+                # the 2-tuple (mcp>=2.0) and 3-tuple (mcp<2.0) shapes.
+                transport = await stack.enter_async_context(
                     streamable_http_client(self.config.url, http_client=http_client)
                 )
+                read, write = transport[0], transport[1]
                 session = await stack.enter_async_context(ClientSession(read, write))
                 await session.initialize()
                 return await session.call_tool(tool_name, arguments)
